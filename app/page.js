@@ -107,6 +107,20 @@ export default function Home() {
         p={2}
         spacing={3}
       >
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+        >
+          <img 
+            src='./images/robot.png' 
+            alt="Robot logo"
+            style={{
+              width: '50px',
+              height: 'auto',
+            }}
+          />
+        </Box>
         <Stack
           direction={'column'}
           spacing={2}
@@ -164,6 +178,7 @@ export default function Home() {
               '& .MuiOutlinedInput-root': {
                 '& fieldset': {
                   borderColor: '#FAFAFF', // Normal border color
+                  borderRadius: 25,
                 },
             },
             }}
@@ -175,6 +190,7 @@ export default function Home() {
             style={{
               backgroundColor: '#9F86C0',
               color: '#FAFAFF',
+              borderRadius: 25,
             }}
             onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#5E548E'}
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#9F86C0'}
