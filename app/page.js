@@ -1,95 +1,188 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client'
+import { Box, Button, Stack, TextField } from "@mui/material";
+import { useEffect, useState, useRef} from "react";
+import ReactMarkdown from 'react-markdown';
 
+// modified to add loading state and sending messages by pressing enter capabilities
 export default function Home() {
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: "Hi! I'm the Headstarter Support Agent, how can I assist you today?",
+    },
+  ])
+
+  const [message, setMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const sendMessage = async () => {
+    if (!message.trim() || isLoading) return;  // Don't send empty messages
+    setIsLoading(true)
+
+    setMessage('') // clear input field
+    setMessages((messages) => [
+      ...messages,
+      { role: 'user', content: message }, // add user's message to chat
+      { role: 'assistant', content: '' }, // add placeholder for assistant's response
+    ])
+  
+    try {
+      // send message to the server
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([...messages, { role: 'user', content: message }]),
+      })
+  
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+  
+      const reader = response.body.getReader() // get reader to read response body
+      const decoder = new TextDecoder() // create a decoder to decode response text
+  
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const text = decoder.decode(value, { stream: true }) // decode text
+        setMessages((messages) => {
+          // gets all messages except last one
+          let lastMessage = messages[messages.length - 1] // get last message (assistant's placeholder)
+          let otherMessages = messages.slice(0, messages.length - 1) // get other messages
+          return [
+            ...otherMessages,
+            { ...lastMessage, content: lastMessage.content + text }, // append decoded text to assistant's message
+          ]
+        })
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      setMessages((messages) => [
+        ...messages,
+        { role: 'assistant', content: "I'm sorry, but I encountered an error. Please try again later." },
+      ])
+    }
+
+    setIsLoading(false)
+  }
+
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      sendMessage()
+    }
+  }
+
+  // ensures most recent messages are always visible
+  // auto-scrolling
+  const messagesEndRef = useRef(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.js</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <Box 
+      width="100vw" 
+      height="100vh" 
+      display="flex"
+      flexDirection="column"
+      justifyContent="center"
+      alignItems="center"
+      sx={{
+        background: 'linear-gradient(to bottom, rgba(35, 25, 66, 1), rgba(35, 25, 66, 0.7))',
+      }}
+    >
+      <Stack
+        direction={'column'}
+        width="600px"
+        height="700px"
+        p={2}
+        spacing={3}
+      >
+        <Stack
+          direction={'column'}
+          spacing={2}
+          flexGrow={1}
+          overflow="auto"
+          maxHeight="100%"
+        >
+          {messages.map((message,index)=>(
+              <Box 
+                key = {index} 
+                display = 'flex' 
+                justifyContent={
+                  message.role === 'assistant' ? 'flex-start' : 'flex-end'
+                }
+              >
+                <Box 
+                  color={message.role === 'assistant' ? '#231942' : '#FAFAFF'}
+                  borderRadius={15}
+                  p={3}
+                  sx={{
+                  background: message.role === 'assistant'
+                      ? 'linear-gradient(to right, rgba(250, 250, 255, 1), rgba(250, 250, 255, 0.5))'
+                      : 'linear-gradient(to right, rgba(94, 84, 142, 1), rgba(94, 84, 142, 0.5))',
+                  lineHeight: 1.6,
+                  wordBreak: 'break-word',
+                  paddingLeft: 4,
+                  paddingRight: 4,
+                }}
+                >
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                </Box>
+              </Box>
+          ))}
+          <div ref={messagesEndRef}/>
+        </Stack>
+        <Stack direction="row" spacing={2}>
+          <TextField
+            label="Message"
+            fullWidth
+            value={message}
+            onChange={(e)=>setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            disabled={isLoading}
+            style={{
+              color: '#FAFAFF', // color inside input
+            }}
+            InputLabelProps={{
+              style: { color: '#FAFAFF' }, // label color
+            }}
+            InputProps={{
+              style: { color: '#FAFAFF' }, // text color inside input
+              notched: false,
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#FAFAFF', // Normal border color
+                },
+            },
+            }}
+          />
+          <Button 
+            variant="contained" 
+            onClick={sendMessage}
+            disabled={isLoading}
+            style={{
+              backgroundColor: '#9F86C0',
+              color: '#FAFAFF',
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#5E548E'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#9F86C0'}
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  );
+            {isLoading ? 'Sending...' : 'Send'}
+          </Button>
+        </Stack>
+      </Stack>
+    </Box>
+  )
 }
